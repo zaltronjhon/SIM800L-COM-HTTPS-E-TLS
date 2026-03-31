@@ -8,7 +8,7 @@ Senhores, bom dia!
  Vou por abaixo as bibliotecas que utilizei, junto com um resumo feito pelo GPT, e se os senhores quiserem é só pegar a logica e jogar em alguma IA que ela fara todo trabalho para os senhores.
 
  Detalhes do meu projeto:
- A proposta era criar um projeto IOT com sensores na minha cidade, com isso os dados coletados seriam enviados para meu endpoint, que era um googlesheets provisoriamente com um script inserido nele, assim a minha primeira versão eu mandava os dados compactados dentro de um JASON, funcionava, e funciona, mas como os dados que eu precisava eram poucos, eu comecei a mandar via URL, assim toda vez que tivesse o sinal, ele mandava via url e o dado saia tabulado na planilha.
+ A proposta era criar um projeto IOT com sensores na minha cidade, com isso os dados coletados seriam enviados para meu endpoint, que era um googlesheets provisoriamente com um script inserido nele, assim a minha primeira versão eu mandava os dados compactados dentro de um JSON, funcionava, e funciona, mas como os dados que eu precisava eram poucos, eu comecei a mandar via URL, assim toda vez que tivesse o sinal, ele mandava via url e o dado saia tabulado na planilha.
 
  FIM
 
