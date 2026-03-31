@@ -31,7 +31,7 @@ ESP_SSLClient: Para que o ESP32 realize a criptografia SSL/TLS.
 ArduinoHttpClient: Para facilitar o envio de requisições HTTP/HTTPS e cabeçalho
 
 ---------CODIGO
-
+```
 #include <TinyGsmClient.h>
 #include <ESP_SSLClient.h>
 #include <ArduinoHttpClient.h>
@@ -107,7 +107,7 @@ void loop() {
   // Espera 1 hora (ou use Deep Sleep como no código anterior)
   delay(3600000); 
 }
-
+```
 
 
 Pontos Chave no Código:
