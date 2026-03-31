@@ -1,0 +1,97 @@
+#define TINY_GSM_MODEM_SIM800
+#include <TinyGsmClient.h>
+#include <ESP_SSLClient.h>
+#include "config.h" // Importa suas configurações locais
+
+// Pinos TTGO T-Call v1.3
+#define MODEM_RST        5
+#define MODEM_PWKEY      4
+#define MODEM_POWER_ON   23
+#define MODEM_TX         27
+#define MODEM_RX         26
+#define WATER_SENSOR_PIN 32
+#define BAT_ADC_PIN      35 
+
+HardwareSerial SerialAT(1);
+TinyGsm modem(SerialAT);
+TinyGsmClient base_client(modem);
+ESP_SSLClient ssl_client;
+
+const char* host = "script.google.com";
+
+int readBattery() {
+  uint32_t raw = 0;
+  for(int i=0; i<10; i++) raw += analogRead(BAT_ADC_PIN);
+  raw /= 10;
+  float voltage = (raw / 4095.0) * 2.0 * 3.3 * 1.1; 
+  int percent = (voltage - 3.2) / (4.2 - 3.2) * 100;
+  return constrain(percent, 0, 100);
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000); 
+
+  int sensorValue = analogRead(WATER_SENSOR_PIN);
+  int batLevel = readBattery();
+  
+  Serial.printf("\n--- %s ---\n", DEVICE_NAME);
+  Serial.printf("Nível Água: %d | Bateria: %d%%\n", sensorValue, batLevel);
+
+  bool isWaterDetected = (sensorValue >= 100);
+  bool isTimerWakeup = (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER);
+
+  if (!isWaterDetected && !isTimerWakeup) {
+    Serial.println("Acordado por ruído ou pino flutuante. Dormindo...");
+  } 
+  else {
+    Serial.println("Conectando para envio de dados...");
+
+    pinMode(MODEM_POWER_ON, OUTPUT);
+    digitalWrite(MODEM_POWER_ON, HIGH);
+    pinMode(MODEM_PWKEY, OUTPUT);
+    digitalWrite(MODEM_PWKEY, LOW); delay(100);
+    digitalWrite(MODEM_PWKEY, HIGH); delay(1000);
+    digitalWrite(MODEM_PWKEY, LOW);
+
+    SerialAT.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
+    
+    if (modem.restart() && modem.gprsConnect(MY_APN, MY_USER, MY_PASS)) {
+      ssl_client.setInsecure();
+      ssl_client.setClient(&base_client);
+
+      if (ssl_client.connect(host, 443)) {
+        // Montagem da URL usando as variáveis do config.h
+        String url = "/macros/s/" + String(MY_SCRIPT_ID) + "/exec";
+        url += "?nivel=" + String(sensorValue);
+        url += "&bat="   + String(batLevel);
+        url += "&dev="   + String(DEVICE_NAME);
+
+        Serial.println("Enviando GET via SSL...");
+        ssl_client.print(String("GET ") + url + " HTTP/1.1\r\n");
+        ssl_client.print(String("Host: ") + host + "\r\n");
+        ssl_client.print("Connection: close\r\n\r\n");
+
+        // Aguarda resposta simplificada
+        unsigned long timeout = millis();
+        while (ssl_client.connected() && millis() - timeout < 8000) {
+          if (ssl_client.available()) {
+            String line = ssl_client.readStringUntil('\n');
+            if (line.indexOf("200 OK") != -1) Serial.println(">> SUCESSO!");
+            break;
+          }
+        }
+        ssl_client.stop();
+      }
+    }
+  }
+
+  // Finalização e Deep Sleep
+  Serial.println("Desligando modem e entrando em sono profundo...");
+  digitalWrite(MODEM_POWER_ON, LOW); 
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)WATER_SENSOR_PIN, 1);
+  esp_sleep_enable_timer_wakeup(3600ULL * 1000000ULL); 
+  esp_deep_sleep_start();
+}
+
+void loop() {}
